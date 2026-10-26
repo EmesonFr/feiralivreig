@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Descubra feiras livres, explore lugares e veja denúncias da comunidade.">
+  <title>Feiras Livres</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section id="login-screen" class="auth-screen active">
+      <div class="orange-decoration deco-top"></div><div class="orange-decoration deco-bottom"></div>
+      <div class="brand-mark">♛</div>
+      <h1 class="login-title">Login</h1><p class="muted center">Faça login</p>
+      <form id="login-form" class="auth-form">
+        <label for="login-user">USUÁRIO</label><input id="login-user" placeholder="seu@email.com" required>
+        <label for="login-password">SENHA</label><input id="login-password" type="password" placeholder="••••••••" required>
+        <button class="primary-btn" type="submit">ENTRAR</button>
+      </form>
+      <p class="auth-links"><a href="#" data-screen="forgot-screen">Esqueceu a senha?</a><br>Não tem conta? <a href="#" data-screen="signup-screen">Crie a sua!</a></p>
+    </section>
+
+    <section id="signup-screen" class="auth-screen">
+      <div class="signup-banner"><button class="back-btn" data-screen="login-screen" aria-label="Voltar">←</button></div>
+      <h2 class="auth-heading">CRIE SUA<br>CONTA</h2><p class="muted center">Já tem uma conta? <a href="#" data-screen="login-screen">Faça seu login</a></p>
+      <form id="signup-form" class="auth-form signup-form">
+        <label for="signup-name">NOME</label><input id="signup-name" placeholder="Seu nome" required>
+        <label for="signup-email">EMAIL</label><input id="signup-email" type="email" placeholder="voce@email.com" required>
+        <label for="signup-password">SENHA</label><input id="signup-password" type="password" placeholder="Crie uma senha" required>
+        <label for="signup-birth">DATA DE NASCIMENTO</label><input id="signup-birth" type="date" required>
+        <button class="primary-btn" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="forgot-screen" class="auth-screen">
+      <div class="signup-banner"><button class="back-btn" data-screen="login-screen">←</button></div>
+      <h2 class="auth-heading">RECUPERAR<br>SENHA</h2><p class="muted center">Informe seu e-mail para continuar.</p>
+      <form id="forgot-form" class="auth-form"><label for="forgot-email">EMAIL</label><input id="forgot-email" type="email" placeholder="voce@email.com" required><button class="primary-btn">Enviar instruções</button></form>
+    </section>
+
+    <section id="home-screen" class="main-screen">
+      <header class="app-header"><div class="avatar">FL</div><div class="greeting"><strong>Bom dia,</strong><small id="greeting-name">EMESON FRANCISCO</small></div><button class="notification" aria-label="Notificações" id="notifications">♟</button></header>
+      <div class="feedback-search"><span class="search-dot"></span><input id="feedback-input" placeholder="Faça um feedback"></div>
+      <div class="shortcut-grid">
+        <button data-screen="report-screen"><span>♧</span><small>Denúncia</small></button>
+        <button data-screen="profile-screen"><span>✺</span><small>Pontuação</small></button>
+        <button data-screen="history-screen"><span>▤</span><small>Denúncias</small></button>
+        <button data-screen="following-screen"><span>✦</span><small>Seguindo</small></button>
+        <button data-screen="explore-screen"><span>♙</span><small>Lugares</small></button>
+        <button data-screen="profile-screen" class="more-shortcut"><span>•••</span><small>See More</small></button>
+      </div>
+      <div class="section-heading"><h2>Denúncias atuais</h2><button class="text-action" data-screen="explore-screen">Ver todas</button></div>
+      <div class="horizontal-cards">
+        <article class="report-card"><img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=700&q=80" alt="Bancas de feira com frutas"><div class="card-caption"><strong>Feira do bairro</strong><small>📍 Recife, PE</small></div></article>
+        <article class="report-card"><img src="https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=700&q=80" alt="Produtos frescos na feira"><div class="card-caption"><strong>Mercado popular</strong><small>📍 Centro</small></div></article>
+      </div>
+      <div class="section-heading"><h2>Feiras Livres</h2><button class="text-action" data-screen="explore-screen">Ver todas</button></div>
+      <div class="market-grid">
+        <article class="market-card"><img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80" alt="Feira ao ar livre"><div><strong>★ SULANCA</strong></div></article>
+        <article class="market-card"><img src="https://images.unsplash.com/photo-1519996529931-28324d6a630e?auto=format&fit=crop&w=600&q=80" alt="Bancas de feira"><div><strong>★ CRUZ</strong></div></article>
+      </div>
+    </section>
+
+    <section id="explore-screen" class="main-screen">
+      <header class="app-header"><div class="avatar">FL</div><div class="greeting"><strong>Explore feiras</strong><small>ENCONTRE UM LUGAR</small></div><button class="notification" id="notifications2">♟</button></header>
+      <div class="feedback-search"><span class="search-dot"></span><input id="market-search" placeholder="Procure um perfil ou feira"></div>
+      <h2 class="serif-heading">Descubra a cidade</h2>
+      <p class="muted">Feiras, comidas e experiências perto de você.</p>
+      <div class="explore-grid" id="explore-grid">
+        <article class="explore-card"><img src="https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=600&q=80" onerror="this.src='https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=600&q=80'" alt="Feira de alimentos"><span>Feiras populares</span></article>
+        <article class="explore-card"><img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80" alt="Campo e barracas"><span>Feiras rurais</span></article>
+        <article class="explore-card"><img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80" alt="Frutas e verduras"><span>Frutas e verduras</span></article>
+        <article class="explore-card"><img src="https://images.unsplash.com/photo-1519996529931-28324d6a630e?auto=format&fit=crop&w=600&q=80" alt="Produtos de feira"><span>Produtos locais</span></article>
+        <article class="explore-card"><img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80" alt="Evento ao ar livre"><span>Eventos</span></article>
+        <article class="explore-card"><img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80" alt="Pessoas em evento"><span>Comunidade</span></article>
+      </div>
+    </section>
+
+    <section id="saved-screen" class="main-screen">
+      <header class="app-header"><div class="avatar">FL</div><div class="greeting"><strong>Seus favoritos</strong><small>FEIRAS SALVAS</small></div></header>
+      <h2 class="serif-heading">Lugares que você gosta</h2><p class="muted">Salve feiras para encontrá-las mais tarde.</p>
+      <div class="saved-list"><article class="saved-item"><img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=300&q=80" alt=""><div><strong>Feira Sulanca</strong><small>Feira popular · Pernambuco</small></div><span>★</span></article><article class="saved-item"><img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80" alt=""><div><strong>Feira de produtos frescos</strong><small>Frutas e verduras</small></div><span>★</span></article></div>
+    </section>
+
+    <section id="profile-screen" class="main-screen">
+      <header class="app-header"><div class="avatar">FL</div><div class="greeting"><strong>EMESON FRANCISCO</strong><small>CIDADÃO COMUM</small></div><button class="notification" id="settings-button">⚙</button></header>
+      <div class="feedback-search"><span class="search-dot"></span><input placeholder="BUSCA"></div>
+      <div class="profile-photo-grid">
+        <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=400&q=80" alt="Evento">
+        <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=400&q=80" alt="Feira">
+        <img src="https://images.unsplash.com/photo-1519996529931-28324d6a630e?auto=format&fit=crop&w=400&q=80" alt="Barracas">
+        <img src="https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=400&q=80" alt="Produtos">
+        <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80" alt="Frutas">
+        <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=400&q=80" alt="Comunidade">
+      </div>
+      <div class="settings-list"><button>Editar perfil <span>›</span></button><button>Notificações <span>›</span></button><button>Privacidade <span>›</span></button><button id="logout-button">Sair da conta <span>›</span></button></div>
+    </section>
+
+    <section id="detail-screen" class="main-screen detail-screen">
+      <div class="detail-hero"><img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=900&q=80" alt="Feira Sulanca"><button class="back-btn detail-back" data-screen="home-screen">←</button><span>Feiras Livres</span></div>
+      <div class="detail-content"><h1>SULANCA</h1><p>Explore feiras locais, conheça vendedores e descubra produtos da região.</p><div class="detail-placeholder"></div><button class="primary-btn" id="save-market">★ Salvar feira</button></div>
+    </section>
+
+
+    <section id="report-screen" class="main-screen">
+      <header class="app-header"><div class="avatar">FL</div><div class="greeting"><strong>Nova denúncia</strong><small>AJUDE A MANTER A FEIRA LIMPA</small></div></header>
+      <h2 class="serif-heading">Denunciar falta de limpeza</h2>
+      <p class="muted">Informe o problema para que ele possa ser encaminhado ao órgão responsável.</p>
+      <form id="report-form" class="report-form">
+        <label for="report-market">Nome da feira</label><input id="report-market" required placeholder="Ex.: Feira do Centro">
+        <label for="report-location">Localização</label><input id="report-location" required placeholder="Rua, bairro ou ponto de referência">
+        <label for="report-type">Tipo de problema</label><select id="report-type" required><option value="">Selecione uma opção</option><option>Lixo acumulado</option><option>Restos de alimentos no chão</option><option>Falta de coleta de resíduos</option><option>Mau cheiro</option><option>Outro problema de limpeza</option></select>
+        <label for="report-description">Descrição</label><textarea id="report-description" required rows="4" placeholder="Descreva o que está acontecendo"></textarea>
+        <label for="report-photo">Foto (opcional)</label><input id="report-photo" type="file" accept="image/*">
+        <button class="primary-btn" type="submit">Enviar denúncia</button>
+      </form>
+    </section>
+
+    <section id="history-screen" class="main-screen">
+      <header class="app-header"><div class="avatar">FL</div><div class="greeting"><strong>Minhas denúncias</strong><small>ACOMPANHE AS SOLICITAÇÕES</small></div></header>
+      <h2 class="serif-heading">Histórico e status</h2>
+      <p class="muted">Acompanhe as denúncias registradas neste dispositivo.</p>
+      <div id="report-history" class="report-history"><p class="empty-state">Você ainda não registrou denúncias.</p></div>
+    </section>
+
+    <section id="following-screen" class="main-screen">
+      <header class="app-header"><div class="avatar">FL</div><div class="greeting"><strong>Páginas seguidas</strong><small>ACOMPANHE A COMUNIDADE</small></div></header>
+      <h2 class="serif-heading">Páginas da comunidade</h2>
+      <p class="muted">Siga páginas para acompanhar informações e atualizações.</p>
+      <div class="follow-list">
+        <article class="follow-item"><div class="follow-avatar">♧</div><div><strong>Feiras do município</strong><small>Informações e avisos</small></div><button class="follow-btn">Seguir</button></article>
+        <article class="follow-item"><div class="follow-avatar">♻</div><div><strong>Limpeza urbana</strong><small>Cuidados com os espaços públicos</small></div><button class="follow-btn">Seguir</button></article>
+        <article class="follow-item"><div class="follow-avatar">♙</div><div><strong>Comunidade local</strong><small>Notícias da região</small></div><button class="follow-btn">Seguir</button></article>
+      </div>
+    </section>
+
+    <nav class="bottom-nav" aria-label="Navegação principal">
+      <button class="nav-item selected" data-screen="home-screen"><span>⌂</span><small>Home</small></button>
+      <button class="nav-item" data-screen="report-screen"><span>＋</span><small>Denunciar</small></button>
+      <button class="nav-item" data-screen="history-screen"><span>▤</span><small>Minhas denúncias</small></button>
+      <button class="nav-item" data-screen="profile-screen"><span>▣</span><small>Perfil</small></button>
+    </nav>
+    <div id="toast" role="status" class="toast"></div>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
