@@ -1,245 +1,1840 @@
-async function api(url, opt = {}) {
-    const method = (opt.method || 'GET').toUpperCase();
-    const body = opt.body ? JSON.parse(opt.body) : {};
-    const key = 'feira_limpa_demo';
-    const sessionKey = 'feira_limpa_sessao';
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f47719">
 
-    let db = JSON.parse(localStorage.getItem(key) || '{"users":[],"reports":[],"notices":[]}');
+<title>Feira Limpa - Feiras Livres</title>
 
-    function save() {
-        localStorage.setItem(key, JSON.stringify(db));
-    }
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
 
-    function fail(message) {
-        throw new Error(message);
-    }
-
-    function currentUser() {
-        const email = localStorage.getItem(sessionKey);
-        return db.users.find(u => u.email === email);
-    }
-
-    function publicUser(u) {
-        return {
-            id: u.id,
-            name: u.name,
-            email: u.email,
-            role: u.role || 'cidadao'
-        };
-    }
-
-    function loggedUser() {
-        const u = currentUser();
-        if (!u) fail('Faça login para continuar.');
-        return u;
-    }
-
-    const demoMarkets = [
-        {
-            id: '1',
-            name: 'Feira de Caruaru',
-            city: 'Caruaru',
-            days: 'Segunda a sábado',
-            hours: '5h às 17h',
-            image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80',
-            description: 'Uma das feiras mais conhecidas de Pernambuco.'
-        },
-        {
-            id: '2',
-            name: 'Feira de Santa Cruz',
-            city: 'Santa Cruz do Capibaribe',
-            days: 'Segunda a sábado',
-            hours: '6h às 18h',
-            image: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80',
-            description: 'Espaço de comércio e convivência da comunidade.'
-        },
-        {
-            id: '3',
-            name: 'Feira do Recife',
-            city: 'Recife',
-            days: 'Segunda a sábado',
-            hours: '6h às 16h',
-            image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80',
-            description: 'Feira livre para comércio de produtos variados.'
-        }
-    ];
-
-    if (url === '/api/register' && method === 'POST') {
-        const name = String(body.name || '').trim();
-        const email = String(body.email || '').trim().toLowerCase();
-        const password = String(body.password || '');
-
-        if (name.length < 2) fail('Digite seu nome completo.');
-        if (!email.includes('@')) fail('Digite um e-mail válido.');
-        if (password.length < 8) fail('A senha precisa ter pelo menos 8 caracteres.');
-        if (db.users.some(u => u.email === email)) {
-            fail('Este e-mail já está cadastrado. Faça login.');
-        }
-
-        db.users.push({
-            id: Date.now(),
-            name,
-            email,
-            password,
-            role: 'cidadao',
-            settings: {
-                emailNotifications: false,
-                compactMode: false
-            }
-        });
-
-        save();
-        return {
-            email,
-            message: 'Cadastro criado! Para esta demonstração, use o código 123456.'
-        };
-    }
-
-    if (url === '/api/login' && method === 'POST') {
-        const email = String(body.email || '').trim().toLowerCase();
-        const password = String(body.password || '');
-        const u = db.users.find(u => u.email === email && u.password === password);
-
-        if (!u) fail('E-mail ou senha incorretos. Crie uma conta primeiro.');
-        return {
-            email: u.email,
-            message: 'Para esta demonstração, use o código 123456.'
-        };
-    }
-
-    if (url === '/api/verify' && method === 'POST') {
-        if (String(body.code || '') !== '123456') {
-            fail('Código incorreto. Use 123456.');
-        }
-
-        const email = String(body.email || '').trim().toLowerCase();
-        const u = db.users.find(u => u.email === email);
-
-        if (!u) fail('Conta não encontrada. Crie sua conta novamente.');
-
-        localStorage.setItem(sessionKey, u.email);
-        return { user: publicUser(u) };
-    }
-
-    if (url === '/api/resend' && method === 'POST') {
-        return { message: 'Código de demonstração: 123456.' };
-    }
-
-    if (url === '/api/logout') {
-        localStorage.removeItem(sessionKey);
-        return { message: 'Você saiu da conta.' };
-    }
-
-    if (url === '/api/me') {
-        const u = currentUser();
-        return {
-            user: u ? publicUser(u) : null,
-            settings: u?.settings || {}
-        };
-    }
-
-    if (url === '/api/markets') {
-        return { markets: demoMarkets };
-    }
-
-    if (url === '/api/reports' && method === 'GET') {
-        const u = loggedUser();
-        const reports = db.reports.filter(r =>
-            u.role === 'prefeitura' || r.email === u.email
-        );
-        return { reports };
-    }
-
-    if (url === '/api/reports' && method === 'POST') {
-        const u = loggedUser();
-        const report = {
-            id: Date.now(),
-            email: u.email,
-            reporter: u.name,
-            market: body.market || '',
-            category: body.category || '',
-            description: body.description || '',
-            location: body.location || '',
-            status: 'Recebida',
-            created_at: new Date().toLocaleString('pt-BR')
-        };
-
-        db.reports.unshift(report);
-        save();
-        return { report };
-    }
-
-    if (url.startsWith('/api/reports/') && method === 'PATCH') {
-        loggedUser();
-        const id = Number(url.split('/').pop());
-        const report = db.reports.find(r => r.id === id);
-
-        if (!report) fail('Denúncia não encontrada.');
-
-        report.status = body.status || report.status;
-        save();
-        return { report };
-    }
-
-    if (url === '/api/notices' && method === 'GET') {
-        loggedUser();
-        return { notices: db.notices };
-    }
-
-    if (url === '/api/notices/read-all' && method === 'POST') {
-        loggedUser();
-        db.notices.forEach(n => n.read = true);
-        save();
-        return { message: 'Avisos marcados como lidos.' };
-    }
-
-    if (url === '/api/profile' && method === 'PUT') {
-        const u = loggedUser();
-        const name = String(body.name || '').trim();
-        const email = String(body.email || '').trim().toLowerCase();
-
-        if (name.length < 2) fail('Digite seu nome.');
-        if (!email.includes('@')) fail('Digite um e-mail válido.');
-
-        if (db.users.some(other => other.email === email && other.id !== u.id)) {
-            fail('Este e-mail já está sendo usado.');
-        }
-
-        u.name = name;
-        u.email = email;
-        localStorage.setItem(sessionKey, email);
-        save();
-
-        return { user: publicUser(u) };
-    }
-
-    if (url === '/api/settings' && method === 'PUT') {
-        const u = loggedUser();
-        u.settings = body;
-        save();
-        return { message: 'Configurações salvas.' };
-    }
-
-    if (url === '/api/forgot' && method === 'POST') {
-        return { message: 'Para esta demonstração, use o código 123456.' };
-    }
-
-    if (url === '/api/reset' && method === 'POST') {
-        const email = String(body.email || '').trim().toLowerCase();
-        const u = db.users.find(u => u.email === email);
-
-        if (!u) fail('Conta não encontrada.');
-        if (String(body.code || '') !== '123456') fail('Código incorreto.');
-        if (String(body.password || '').length < 8) fail('A senha precisa ter 8 caracteres.');
-
-        u.password = body.password;
-        save();
-        return { message: 'Senha alterada com sucesso.' };
-    }
-
-    if (url.startsWith('/api/profile/')) {
-        fail('Esta função de perfil não está disponível na demonstração.');
-    }
-
-    fail('Função não reconhecida: ' + url);
+:root {
+  --orange: #f47719;
+  --dark: #e96308;
+  --background: #f5f6f5;
+  --text: #222;
+  --muted: #777;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #e9eceb;
+  color: var(--text);
+  font-family: 'DM Sans', Arial, sans-serif;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.phone {
+  max-width: 430px;
+  min-height: 100vh;
+  margin: auto;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 25px #0001;
+}
+
+.screen {
+  display: none;
+  min-height: 100vh;
+  padding-bottom: 95px;
+}
+
+.screen.active {
+  display: block;
+  animation: aparecer .2s ease;
+}
+
+@keyframes aparecer {
+  from { opacity: .5; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* LOGIN E CADASTRO */
+
+.auth {
+  min-height: 100vh;
+  padding: 0 28px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-logo {
+  margin: 22vh auto 15px;
+  width: 75px;
+  height: 75px;
+  border: 3px solid var(--text);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 38px;
+}
+
+.auth h1 {
+  font-size: 32px;
+  margin: 10px 0 5px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 9px;
+  margin-top: 25px;
+}
+
+.form label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.form input,
+.form select,
+.form textarea {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  background: #eee;
+  border-radius: 12px;
+  outline: 2px solid transparent;
+}
+
+.form input:focus,
+.form select:focus,
+.form textarea:focus {
+  outline-color: #f9b57f;
+}
+
+.form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.btn {
+  background: var(--orange);
+  color: white;
+  border: none;
+  border-radius: 9px;
+  padding: 14px;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 8px;
+}
+
+.btn:hover {
+  background: var(--dark);
+}
+
+.text-btn,
+.inline-link {
+  background: none;
+  border: none;
+  color: var(--dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.text-btn {
+  margin-top: 20px;
+}
+
+.orange-banner {
+  height: 150px;
+  background: var(--orange);
+  margin: 0 -28px;
+  border-radius: 0 0 0 45px;
+  position: relative;
+}
+
+.back {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  background: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 23px;
+}
+
+.signup-title {
+  margin-top: 30px !important;
+  font-size: 28px !important;
+}
+
+/* CABEÇALHO */
+
+.home-header {
+  background: #edf0ee;
+  padding: 22px;
+  border-radius: 0 0 0 32px;
+}
+
+.user-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  background: var(--orange);
+  color: white;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+.user-line strong,
+.user-line small {
+  display: block;
+}
+
+.user-line small {
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.bell {
+  margin-left: auto;
+  border: none;
+  background: var(--orange);
+  color: white;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+}
+
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 0 12px;
+  background: white;
+  border-radius: 25px;
+  height: 43px;
+  border: 1px solid #eee;
+}
+
+.searchbar input {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 12px;
+  background: transparent;
+}
+
+.searchbar button {
+  border: none;
+  background: none;
+  color: var(--orange);
+  font-size: 20px;
+}
+
+/* ATALHOS */
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+  padding: 15px 18px 0;
+}
+
+.quick-actions button {
+  background: var(--orange);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  min-height: 70px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.quick-actions span {
+  font-size: 22px;
+}
+
+.quick-actions button:nth-child(6) {
+  background: #fff0e3;
+  color: #333;
+}
+
+/* SEÇÕES */
+
+.content-section {
+  padding: 20px 18px 0;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.section-heading h2 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.inline-link {
+  padding: 5px;
+}
+
+.map-box {
+  border-radius: 16px;
+  padding: 8px;
+  background: white;
+  box-shadow: 0 4px 15px #0001;
+}
+
+.map-box iframe {
+  width: 100%;
+  height: 260px;
+  border: none;
+  border-radius: 12px;
+  display: block;
+}
+
+/* FOTOS DAS FEIRAS */
+
+.market-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.market-tile {
+  position: relative;
+  height: 155px;
+  border-radius: 15px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #eee;
+}
+
+.market-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .2s;
+}
+
+.market-tile:hover img {
+  transform: scale(1.05);
+}
+
+.tile-caption {
+  position: absolute;
+  bottom: 7px;
+  left: 7px;
+  right: 7px;
+  padding: 9px;
+  background: #ffffffed;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tile-caption small {
+  display: block;
+  color: #777;
+  font-size: 10px;
+  margin-top: 3px;
+}
+
+.market-list,
+.report-list {
+  padding: 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.market-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 15px;
+  cursor: pointer;
+}
+
+.market-thumb {
+  width: 95px;
+  height: 90px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.market-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.market-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.market-info h3 {
+  font-size: 13px;
+  margin: 0 0 6px;
+}
+
+.market-info p {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.market-meta {
+  font-size: 10px;
+}
+
+.mini-heart {
+  background: none;
+  border: none;
+  color: var(--orange);
+  font-size: 23px;
+}
+
+/* NAVEGAÇÃO INFERIOR */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: var(--orange);
+  padding: 10px 5px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  z-index: 10;
+}
+
+.bottom-nav button {
+  border: none;
+  background: transparent;
+  color: white;
+  border-radius: 18px;
+  padding: 5px 12px;
+  font-size: 21px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.bottom-nav small {
+  font-size: 9px;
+}
+
+.bottom-nav button.selected {
+  background: white;
+  color: #333;
+}
+
+/* CABEÇALHOS INTERNOS */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 18px;
+}
+
+.page-header h1 {
+  font-size: 19px;
+  margin: 0;
+}
+
+.round-back {
+  background: #fff0e3;
+  border: none;
+  color: var(--dark);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 22px;
+}
+
+.page-intro {
+  padding: 0 20px 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.filter-row {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px 15px;
+}
+
+.filter {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 20px;
+  padding: 9px 13px;
+  font-size: 11px;
+}
+
+.filter.active {
+  background: var(--orange);
+  color: white;
+}
+
+/* DETALHES DA FEIRA */
+
+.detail-hero {
+  height: 280px;
+  position: relative;
+  background: #eee;
+}
+
+.detail-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-hero .round-back {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  background: white;
+}
+
+.detail-body {
+  padding: 20px;
+}
+
+.detail-body h1 {
+  font-size: 23px;
+  margin-bottom: 5px;
+}
+
+.detail-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: #f6f6f6;
+  padding: 15px;
+  border-radius: 14px;
+  margin: 20px 0;
+}
+
+.detail-stats b,
+.detail-stats small {
+  display: block;
+}
+
+.detail-stats b {
+  font-size: 12px;
+}
+
+.detail-stats small {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+.description {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #666;
+}
+
+.outline-btn {
+  background: white;
+  color: var(--dark);
+  border: 1px solid var(--orange);
+  padding: 13px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* PERFIL */
+
+.profile-card {
+  text-align: center;
+  background: var(--background);
+  padding: 28px 20px;
+  border-radius: 0 0 25px 25px;
+}
+
+.profile-avatar {
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: white;
+  display: grid;
+  place-items: center;
+  margin: auto auto 12px;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.profile-card h2 {
+  font-size: 20px;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 20px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.stats-row div {
+  text-align: center;
+}
+
+.stats-row b,
+.stats-row small {
+  display: block;
+}
+
+.stats-row b {
+  color: var(--dark);
+  font-size: 19px;
+}
+
+.stats-row small {
+  font-size: 10px;
+  color: #777;
+}
+
+.menu-list {
+  padding: 10px 20px;
+}
+
+.menu-list button {
+  width: 100%;
+  padding: 17px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  border-bottom: 1px solid #eee;
+  background: white;
+  text-align: left;
+}
+
+.menu-list span {
+  flex: 1;
+  font-size: 13px;
+}
+
+/* DENÚNCIAS */
+
+.app-form {
+  margin: 0 20px;
+}
+
+.report-item {
+  border: 1px solid #eee;
+  padding: 15px;
+  border-radius: 13px;
+}
+
+.report-item h3 {
+  font-size: 14px;
+}
+
+.report-item p {
+  color: #666;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.badge {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 15px;
+  background: #fff0e3;
+  color: #a94f0a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sticky-action {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 20px auto;
+}
+
+/* SOBRE E NOTIFICAÇÕES */
+
+.about-card {
+  margin: 20px;
+  padding: 25px;
+  border: 1px solid #eee;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.about-logo {
+  margin: auto;
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.about-card p {
+  color: #666;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.notice {
+  margin: 20px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #fff2e7;
+  font-size: 13px;
+}
+
+.toast {
+  position: fixed;
+  z-index: 20;
+  bottom: 85px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: white;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 12px;
+  display: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+.toast.show {
+  display: block;
+}
+
+@media (min-width: 600px) {
+  body {
+    padding: 20px 0;
+  }
+
+  .phone {
+    min-height: 850px;
+    border-radius: 25px;
+  }
+
+  .screen {
+    min-height: 850px;
+  }
+
+  .bottom-nav {
+    position: absolute;
+  }
+
+  .auth-logo {
+    margin-top: 220px;
+  }
+}
+</style>
+</head>
+
+<body>
+<main class="phone">
+
+<!-- LOGIN -->
+
+<section id="login" class="screen auth active">
+  <div class="auth-logo">♧</div>
+
+  <h1>Login</h1>
+  <p class="muted">Bem-vindo ao Feira Limpa!</p>
+
+  <form id="loginForm" class="form">
+    <label>EMAIL</label>
+    <input id="loginEmail" type="email" placeholder="seu@email.com" required>
+
+    <label>SENHA</label>
+    <input id="loginPassword" type="password" placeholder="Sua senha" required>
+
+    <button class="btn">ENTRAR</button>
+  </form>
+
+  <button class="text-btn" data-go="forgot">Esqueceu a senha?</button>
+
+  <p class="muted">
+    Não tem conta?
+    <button class="inline-link" data-go="signup">Crie a sua!</button>
+  </p>
+</section>
+
+<!-- CADASTRO -->
+
+<section id="signup" class="screen auth">
+  <header class="orange-banner">
+    <button class="back" data-go="login">←</button>
+  </header>
+
+  <h1 class="signup-title">CRIE SUA CONTA</h1>
+  <p class="muted">Cadastre-se para começar.</p>
+
+  <form id="signupForm" class="form">
+    <label>NOME COMPLETO</label>
+    <input id="signupName" placeholder="Seu nome" required>
+
+    <label>EMAIL</label>
+    <input id="signupEmail" type="email" placeholder="seu@email.com" required>
+
+    <label>SENHA</label>
+    <input id="signupPassword" type="password" minlength="4" required>
+
+    <label>DATA DE NASCIMENTO</label>
+    <input id="signupBirth" type="date" required>
+
+    <button class="btn">CRIAR CONTA</button>
+  </form>
+
+  <p class="muted">
+    Já tem conta?
+    <button class="inline-link" data-go="login">Entrar</button>
+  </p>
+</section>
+
+<!-- RECUPERAR SENHA -->
+
+<section id="forgot" class="screen auth">
+  <header class="orange-banner">
+    <button class="back" data-go="login">←</button>
+  </header>
+
+  <h1 class="signup-title">RECUPERAR SENHA</h1>
+
+  <form id="forgotForm" class="form">
+    <label>EMAIL</label>
+    <input type="email" id="forgotEmail" required placeholder="seu@email.com">
+    <button class="btn">CONTINUAR</button>
+  </form>
+</section>
+
+<!-- INÍCIO -->
+
+<section id="home" class="screen">
+  <header class="home-header">
+    <div class="user-line">
+      <div class="avatar">FL</div>
+      <div>
+        <strong>Bem-vindo!</strong>
+        <small id="helloName">VISITANTE</small>
+      </div>
+      <button class="bell" data-go="notifications">🔔</button>
+    </div>
+
+    <div class="searchbar">
+      <span>🔎</span>
+      <input id="homeSearch" placeholder="Pesquisar feiras livres">
+      <button id="homeSearchBtn">⌕</button>
+    </div>
+  </header>
+
+  <div class="quick-actions">
+    <button data-go="reports"><span>📣</span>Denúncias</button>
+    <button data-go="markets"><span>🧭</span>Feiras</button>
+    <button data-go="saved"><span>🔖</span>Favoritos</button>
+    <button data-go="profile"><span>👤</span>Perfil</button>
+    <button data-go="report"><span>🧹</span>Reportar</button>
+    <button data-go="about"><span>ℹ️</span>Saiba mais</button>
+  </div>
+
+  <!-- MAPA -->
+
+  <section class="content-section">
+    <div class="section-heading">
+      <h2>Mapa das feiras</h2>
+      <a class="inline-link"
+         href="https://www.google.com/maps/search/feiras+livres+Pernambuco/"
+         target="_blank" rel="noopener noreferrer">
+        Abrir mapa
+      </a>
+    </div>
+
+    <div class="map-box">
+      <iframe
+        title="Mapa de feiras livres de Pernambuco"
+        src="https://maps.google.com/maps?q=feiras%20livres%20Pernambuco&t=&z=9&ie=UTF8&iwloc=&output=embed"
+        loading="lazy"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </section>
+
+  <!-- DENÚNCIAS RECENTES -->
+
+  <section class="content-section">
+    <div class="section-heading">
+      <h2>Denúncias atuais</h2>
+      <button class="inline-link" data-go="reports">Ver todas</button>
+    </div>
+
+    <div id="homeReports"></div>
+  </section>
+
+  <!-- FOTOS DAS FEIRAS -->
+
+  <section class="content-section">
+    <div class="section-heading">
+      <h2>Feiras livres</h2>
+      <button class="inline-link" data-go="markets">Ver todas</button>
+    </div>
+
+    <div id="homeMarkets" class="market-grid"></div>
+  </section>
+
+  <nav class="bottom-nav">
+    <button class="selected" data-go="home">⌂<small>Início</small></button>
+    <button data-go="markets">⌕<small>Buscar</small></button>
+    <button data-go="saved">♡<small>Salvos</small></button>
+    <button data-go="profile">♙<small>Perfil</small></button>
+  </nav>
+</section>
+
+<!-- LISTA DE FEIRAS -->
+
+<section id="markets" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="home">←</button>
+    <h1>Feiras livres</h1>
+    <button class="round-back" data-go="saved">♡</button>
+  </header>
+
+  <div class="searchbar" style="margin:0 18px 15px">
+    <span>🔎</span>
+    <input id="marketSearch" placeholder="Buscar feira ou cidade">
+  </div>
+
+  <div class="filter-row">
+    <button class="filter active" data-filter="Todas">Todas</button>
+    <button class="filter" data-filter="Aberta">Abertas</button>
+    <button class="filter" data-filter="Limpa">Melhor avaliadas</button>
+  </div>
+
+  <div id="marketList" class="market-list"></div>
+
+  <nav class="bottom-nav">
+    <button data-go="home">⌂<small>Início</small></button>
+    <button class="selected" data-go="markets">⌕<small>Buscar</small></button>
+    <button data-go="saved">♡<small>Salvos</small></button>
+    <button data-go="profile">♙<small>Perfil</small></button>
+  </nav>
+</section>
+
+<!-- DETALHES DA FEIRA -->
+
+<section id="detail" class="screen">
+  <div class="detail-hero">
+    <img id="detailPhoto" src="" alt="Foto da feira">
+    <button class="round-back" data-go="markets">←</button>
+  </div>
+
+  <div class="detail-body">
+    <h1 id="detailName">Feira livre</h1>
+    <p id="detailLocation" class="muted"></p>
+    <p id="detailRating" class="muted"></p>
+
+    <div class="detail-stats">
+      <div>
+        <b id="detailDays"></b>
+        <small>Dias de funcionamento</small>
+      </div>
+      <div>
+        <b id="detailHours"></b>
+        <small>Horário</small>
+      </div>
+    </div>
+
+    <h3>Sobre esta feira</h3>
+    <p id="detailDescription" class="description"></p>
+
+    <div class="detail-actions">
+      <button class="btn" id="saveDetail">♡ Salvar feira</button>
+      <button class="outline-btn" id="reportFromDetail">Informar problema</button>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button data-go="home">⌂<small>Início</small></button>
+    <button class="selected" data-go="markets">⌕<small>Buscar</small></button>
+    <button data-go="saved">♡<small>Salvos</small></button>
+    <button data-go="profile">♙<small>Perfil</small></button>
+  </nav>
+</section>
+
+<!-- FAVORITOS -->
+
+<section id="saved" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="home">←</button>
+    <h1>Feiras salvas</h1>
+    <span></span>
+  </header>
+
+  <p class="page-intro">Suas feiras favoritas em um só lugar.</p>
+  <div id="savedList" class="market-list"></div>
+
+  <nav class="bottom-nav">
+    <button data-go="home">⌂<small>Início</small></button>
+    <button data-go="markets">⌕<small>Buscar</small></button>
+    <button class="selected" data-go="saved">♡<small>Salvos</small></button>
+    <button data-go="profile">♙<small>Perfil</small></button>
+  </nav>
+</section>
+
+<!-- PERFIL -->
+
+<section id="profile" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="home">←</button>
+    <h1>Meu perfil</h1>
+    <button class="round-back" data-go="settings">⚙</button>
+  </header>
+
+  <div class="profile-card">
+    <div class="profile-avatar">FL</div>
+    <h2 id="profileName">Visitante</h2>
+    <p id="profileEmail" class="muted"></p>
+    <button class="outline-btn" id="editProfile">Editar perfil</button>
+  </div>
+
+  <div class="stats-row">
+    <div><b id="savedCount">0</b><small>Favoritos</small></div>
+    <div><b id="reportCount">0</b><small>Denúncias</small></div>
+    <div><b id="pointsCount">0</b><small>Pontos</small></div>
+  </div>
+
+  <div class="menu-list">
+    <button data-go="reports">📣 <span>Minhas denúncias</span> ›</button>
+    <button data-go="notifications">🔔 <span>Notificações</span> ›</button>
+    <button data-go="settings">⚙️ <span>Configurações</span> ›</button>
+    <button data-go="about">ℹ️ <span>Sobre o aplicativo</span> ›</button>
+    <button id="logoutBtn">↪ <span>Sair da conta</span> ›</button>
+  </div>
+
+  <nav class="bottom-nav">
+    <button data-go="home">⌂<small>Início</small></button>
+    <button data-go="markets">⌕<small>Buscar</small></button>
+    <button data-go="saved">♡<small>Salvos</small></button>
+    <button class="selected" data-go="profile">♙<small>Perfil</small></button>
+  </nav>
+</section>
+
+<!-- NOVA DENÚNCIA -->
+
+<section id="report" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="home">←</button>
+    <h1>Nova denúncia</h1>
+    <span></span>
+  </header>
+
+  <p class="page-intro">
+    Ajude a manter as feiras limpas. Informe os problemas encontrados.
+  </p>
+
+  <form id="reportForm" class="form app-form">
+    <label>FEIRA</label>
+    <select id="reportMarket" required></select>
+
+    <label>TIPO DE PROBLEMA</label>
+    <select id="reportType" required>
+      <option value="">Selecione</option>
+      <option>Lixo acumulado</option>
+      <option>Falta de coleta</option>
+      <option>Entulho na passagem</option>
+      <option>Falta de lixeiras</option>
+      <option>Falta de limpeza imediata</option>
+      <option>Outro</option>
+    </select>
+
+    <label>DESCRIÇÃO</label>
+    <textarea id="reportDescription" minlength="10"
+      placeholder="Descreva o problema encontrado..." required></textarea>
+
+    <label>LOCAL EXATO</label>
+    <input id="reportLocation" placeholder="Rua ou ponto de referência">
+
+    <button class="btn">ENVIAR DENÚNCIA</button>
+
+    <p class="muted">
+      Protótipo acadêmico: os dados são armazenados neste navegador.
+    </p>
+  </form>
+</section>
+
+<!-- DENÚNCIAS -->
+
+<section id="reports" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="home">←</button>
+    <h1>Denúncias</h1>
+    <button class="round-back" data-go="report">＋</button>
+  </header>
+
+  <p class="page-intro">Acompanhe os problemas registrados.</p>
+
+  <div id="reportList" class="report-list"></div>
+
+  <button class="btn sticky-action" data-go="report">
+    + Nova denúncia
+  </button>
+</section>
+
+<!-- NOTIFICAÇÕES -->
+
+<section id="notifications" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="home">←</button>
+    <h1>Notificações</h1>
+    <span></span>
+  </header>
+
+  <div id="userNotices" class="notice">
+    🧹 Bem-vindo ao Feira Limpa! Ajude a melhorar a limpeza e a organização das feiras.
+  </div>
+</section>
+
+<!-- CONFIGURAÇÕES -->
+
+<section id="settings" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="profile">←</button>
+    <h1>Configurações</h1>
+    <span></span>
+  </header>
+
+  <div class="menu-list">
+    <button id="compactToggle">📱 <span>Alternar modo compacto</span></button>
+    <button data-go="about">🔒 <span>Privacidade</span></button>
+    <button id="clearData">🗑️ <span>Apagar dados locais</span></button>
+  </div>
+</section>
+
+<!-- SOBRE -->
+
+<section id="about" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="home">←</button>
+    <h1>Sobre o aplicativo</h1>
+    <span></span>
+  </header>
+
+  <div class="about-card">
+    <div class="about-logo">FL</div>
+    <h2>Feira Limpa</h2>
+
+    <p>
+      Descubra feiras livres, encontre sua localização no mapa,
+      salve suas favoritas e colabore com a limpeza dos espaços públicos.
+    </p>
+
+    <h3>Nosso objetivo</h3>
+
+    <p>
+      Incentivar a limpeza imediata e a organização das feiras livres,
+      permitindo que a comunidade registre problemas e acompanhe as denúncias.
+    </p>
+
+    <p class="muted">Projeto acadêmico de software mobile.</p>
+  </div>
+</section>
+
+<!-- EDITAR PERFIL -->
+
+<section id="edit" class="screen">
+  <header class="page-header">
+    <button class="round-back" data-go="profile">←</button>
+    <h1>Editar perfil</h1>
+    <span></span>
+  </header>
+
+  <form id="editForm" class="form app-form">
+    <label>NOME</label>
+    <input id="editName" required>
+
+    <label>EMAIL</label>
+    <input id="editEmail" type="email" required>
+
+    <button class="btn">SALVAR ALTERAÇÕES</button>
+  </form>
+</section>
+
+<div id="toast" class="toast" role="status"></div>
+
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const KEY = 'feiraLimpaApp_v3';
+
+const defaults = {
+  user: null,
+  users: [],
+  saved: [],
+  reports: [],
+  compact: false,
+  markets: [
+    {
+      id: 'sulanca',
+      name: 'Feira da Sulanca',
+      city: 'Caruaru, PE',
+      days: 'Segunda e quinta',
+      hours: '05h às 13h',
+      status: 'Aberta',
+      rating: '4,8',
+      photo: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=800&q=80',
+      desc: 'Feira tradicional conhecida pelo comércio de roupas, acessórios e produtos variados. Ajude a manter os espaços limpos e organizados.'
+    },
+    {
+      id: 'cruz',
+      name: 'Feira de Santa Cruz',
+      city: 'Santa Cruz do Capibaribe, PE',
+      days: 'Segunda a sábado',
+      hours: '06h às 14h',
+      status: 'Aberta',
+      rating: '4,7',
+      photo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
+      desc: 'Comércio regional com alimentos, produtos frescos e diversas opções para a comunidade.'
+    },
+    {
+      id: 'centro',
+      name: 'Feira do Centro',
+      city: 'Bezerros, PE',
+      days: 'Sábado',
+      hours: '06h às 12h',
+      status: 'Fechada',
+      rating: '4,5',
+      photo: 'https://images.unsplash.com/photo-1543168256-418811576931?auto=format&fit=crop&w=800&q=80',
+      desc: 'Espaço de comércio local com frutas, verduras e produtos regionais.'
+    },
+    {
+      id: 'bairro',
+      name: 'Feira do Bairro',
+      city: 'Caruaru, PE',
+      days: 'Quarta e domingo',
+      hours: '06h às 12h',
+      status: 'Aberta',
+      rating: '4,6',
+      photo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
+      desc: 'Uma opção para comprar alimentos frescos e apoiar pequenos comerciantes.'
+    }
+  ]
+};
+
+function clone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY));
+    if (!saved) return clone(defaults);
+
+    return {
+      ...clone(defaults),
+      ...saved,
+      users: saved.users || [],
+      saved: saved.saved || [],
+      reports: saved.reports || [],
+      markets: saved.markets || clone(defaults.markets)
+    };
+  } catch {
+    return clone(defaults);
+  }
+}
+
+let state = load();
+let currentMarket = null;
+let filter = 'Todas';
+
+function persist() {
+  localStorage.setItem(KEY, JSON.stringify(state));
+  renderAll();
+}
+
+function toast(message) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.classList.add('show');
+
+  clearTimeout(toast.timer);
+
+  toast.timer = setTimeout(() => {
+    el.classList.remove('show');
+  }, 2800);
+}
+
+function go(id) {
+  const screen = document.getElementById(id);
+  if (!screen) return;
+
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  screen.classList.add('active');
+
+  window.scrollTo(0, 0);
+
+  if (id === 'report') populateReportMarkets();
+
+  if (id === 'edit') {
+    $('#editName').value = state.user?.name || '';
+    $('#editEmail').value = state.user?.email || '';
+  }
+
+  if (id === 'home' || id === 'markets' ||
+      id === 'saved' || id === 'reports' ||
+      id === 'profile') {
+    renderAll();
+  }
+}
+
+$$('[data-go]').forEach(button => {
+  button.addEventListener('click', event => {
+    event.preventDefault();
+    go(button.dataset.go);
+  });
+});
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[c]);
+}
+
+/* CADASTRO */
+
+$('#signupForm').addEventListener('submit', event => {
+  event.preventDefault();
+
+  const name = $('#signupName').value.trim();
+  const email = $('#signupEmail').value.trim().toLowerCase();
+  const password = $('#signupPassword').value;
+
+  if (state.users.some(u => u.email === email)) {
+    toast('Este e-mail já está cadastrado.');
+    return;
+  }
+
+  const user = {
+    name,
+    email,
+    password,
+    birth: $('#signupBirth').value
+  };
+
+  state.users.push(user);
+  state.user = user;
+
+  persist();
+  event.target.reset();
+  go('home');
+
+  toast('Conta criada com sucesso!');
+});
+
+/* LOGIN */
+
+$('#loginForm').addEventListener('submit', event => {
+  event.preventDefault();
+
+  const email = $('#loginEmail').value.trim().toLowerCase();
+  const password = $('#loginPassword').value;
+
+  const user = state.users.find(
+    u => u.email === email && u.password === password
+  );
+
+  if (!user) {
+    toast('E-mail ou senha incorretos. Cadastre-se primeiro.');
+    return;
+  }
+
+  state.user = user;
+  persist();
+  go('home');
+
+  toast('Login realizado com sucesso!');
+});
+
+/* RECUPERAÇÃO DEMONSTRATIVA */
+
+$('#forgotForm').addEventListener('submit', event => {
+  event.preventDefault();
+
+  const email = $('#forgotEmail').value.trim().toLowerCase();
+
+  if (state.users.some(u => u.email === email)) {
+    toast('Para recuperar a senha, entre em contato com o responsável pelo protótipo.');
+  } else {
+    toast('E-mail não encontrado.');
+  }
+});
+
+/* PESQUISA */
+
+$('#homeSearchBtn').addEventListener('click', () => {
+  go('markets');
+  $('#marketSearch').value = $('#homeSearch').value;
+  renderMarkets();
+});
+
+$('#homeSearch').addEventListener('keydown', event => {
+  if (event.key === 'Enter') $('#homeSearchBtn').click();
+});
+
+$('#marketSearch').addEventListener('input', renderMarkets);
+
+$$('.filter').forEach(button => {
+  button.addEventListener('click', () => {
+    $$('.filter').forEach(b => b.classList.remove('active'));
+
+    button.classList.add('active');
+    filter = button.dataset.filter;
+
+    renderMarkets();
+  });
+});
+
+/* CARTÕES DAS FEIRAS */
+
+function marketCard(m) {
+  const saved = state.saved.includes(m.id);
+
+  return `
+    <article class="market-item" data-market="${esc(m.id)}">
+
+      <div class="market-thumb">
+        <img
+          src="${esc(m.photo)}"
+          alt="${esc(m.name)}"
+          loading="lazy"
+          onerror="this.onerror=null;this.src='https://placehold.co/300x250/f47719/ffffff?text=Feira+Livre'"
+        >
+      </div>
+
+      <div class="market-info">
+        <h3>${esc(m.name)}</h3>
+        <p>📍 ${esc(m.city)}</p>
+        <div class="market-meta">
+          ${esc(m.status)} · ★ ${esc(m.rating)}
+        </div>
+      </div>
+
+      <button class="mini-heart"
+        data-save="${esc(m.id)}"
+        aria-label="Favoritar">
+        ${saved ? '♥' : '♡'}
+      </button>
+
+    </article>
+  `;
+}
+
+function bindMarketCards(root) {
+  root.querySelectorAll('[data-market]').forEach(card => {
+    card.addEventListener('click', event => {
+      if (event.target.closest('[data-save]')) return;
+      openMarket(card.dataset.market);
+    });
+  });
+
+  root.querySelectorAll('[data-save]').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleSaved(button.dataset.save);
+    });
+  });
+}
+
+function renderMarkets() {
+  const q = ($('#marketSearch')?.value || '').toLowerCase();
+
+  const list = state.markets.filter(m => {
+    const matches = (m.name + ' ' + m.city).toLowerCase().includes(q);
+
+    const matchesFilter =
+      filter === 'Todas' ||
+      (filter === 'Aberta' && m.status === 'Aberta') ||
+      (filter === 'Limpa' && Number(m.rating.replace(',', '.')) >= 4.6);
+
+    return matches && matchesFilter;
+  });
+
+  $('#marketList').innerHTML = list.length
+    ? list.map(marketCard).join('')
+    : '<p class="page-intro">Nenhuma feira encontrada.</p>';
+
+  bindMarketCards($('#marketList'));
+}
+
+/* FAVORITOS */
+
+function toggleSaved(id) {
+  if (state.saved.includes(id)) {
+    state.saved = state.saved.filter(x => x !== id);
+    toast('Feira removida dos favoritos.');
+  } else {
+    state.saved.push(id);
+    toast('Feira adicionada aos favoritos.');
+  }
+
+  persist();
+
+  if (currentMarket === id) updateDetailSave();
+}
+
+function renderSaved() {
+  const list = state.markets.filter(m => state.saved.includes(m.id));
+
+  $('#savedList').innerHTML = list.length
+    ? list.map(marketCard).join('')
+    : `
+      <div class="about-card">
+        <div class="about-logo">♡</div>
+        <h2>Nenhuma feira salva</h2>
+        <p>Toque no coração de uma feira para adicioná-la aos favoritos.</p>
+        <button class="btn" data-go="markets">Explorar feiras</button>
+      </div>
+    `;
+
+  bindMarketCards($('#savedList'));
+
+  $('#savedList').querySelectorAll('[data-go]').forEach(button => {
+    button.addEventListener('click', () => go(button.dataset.go));
+  });
+}
+
+/* DETALHES */
+
+function openMarket(id) {
+  const m = state.markets.find(x => x.id === id);
+  if (!m) return;
+
+  currentMarket = id;
+
+  $('#detailPhoto').src = m.photo;
+  $('#detailPhoto').alt = 'Foto de ' + m.name;
+  $('#detailName').textContent = m.name;
+  $('#detailLocation').textContent = '📍 ' + m.city;
+  $('#detailRating').textContent = '★ ' + m.rating;
+  $('#detailDays').textContent = m.days;
+  $('#detailHours').textContent = m.hours;
+  $('#detailDescription').textContent = m.desc;
+
+  updateDetailSave();
+  go('detail');
+}
+
+function updateDetailSave() {
+  const saved = state.saved.includes(currentMarket);
+
+  $('#saveDetail').textContent = saved
+    ? '♥ Feira salva'
+    : '♡ Salvar feira';
+}
+
+$('#saveDetail').addEventListener('click', () => {
+  if (currentMarket) toggleSaved(currentMarket);
+});
+
+/* DENÚNCIAS */
+
+function populateReportMarkets() {
+  $('#reportMarket').innerHTML =
+    '<option value="">Selecione uma feira</option>' +
+    state.markets.map(m =>
+      `<option value="${esc(m.id)}">${esc(m.name)}</option>`
+    ).join('');
+
+  if (currentMarket) {
+    $('#reportMarket').value = currentMarket;
+  }
+}
+
+$('#reportFromDetail').addEventListener('click', () => {
+  go('report');
+  $('#reportMarket').value = currentMarket || '';
+});
+
+$('#reportForm').addEventListener('submit', event => {
+  event.preventDefault();
+
+  const market = state.markets.find(
+    m => m.id === $('#reportMarket').value
+  );
+
+  if (!market) {
+    toast('Selecione uma feira.');
+    return;
+  }
+
+  const report = {
+    id: Date.now(),
+    marketId: market.id,
+    market: market.name,
+    type: $('#reportType').value,
+    description: $('#reportDescription').value.trim(),
+    location: $('#reportLocation').value.trim(),
+    date: new Date().toLocaleString('pt-BR'),
+    status: 'Recebida',
+    userEmail: state.user?.email || ''
+  };
+
+  state.reports.unshift(report);
+
+  persist();
+  event.target.reset();
+
+  go('reports');
+  toast('Denúncia registrada com sucesso!');
+});
+
+function renderReports() {
+  const reports = state.reports.filter(
+    r => !state.user || !r.userEmail || r.userEmail === state.user.email
+  );
+
+  if (!reports.length) {
+    $('#reportList').innerHTML = `
+      <div class="about-card">
+        <div class="about-logo">✓</div>
+        <h2>Nenhuma denúncia ainda</h2>
+        <p>Quando encontrar um problema de limpeza, registre uma denúncia.</p>
+      </div>
+    `;
+    return;
+  }
+
+  $('#reportList').innerHTML = reports.map(r => `
+    <article class="report-item">
+      <span class="badge">${esc(r.status)}</span>
+      <h3>${esc(r.type)} · ${esc(r.market)}</h3>
+      <p>${esc(r.description)}</p>
+      ${r.location ? `<p>📍 ${esc(r.location)}</p>` : ''}
+      <small>${esc(r.date)}</small>
+    </article>
+  `).join('');
+}
+
+/* TELA INICIAL */
+
+function renderHome() {
+  $('#helloName').textContent =
+    (state.user?.name || 'VISITANTE').toLocaleUpperCase('pt-BR');
+
+  $('#homeMarkets').innerHTML = state.markets.map(m => `
+    <article class="market-tile" data-market="${esc(m.id)}">
+      <img
+        src="${esc(m.photo)}"
+        alt="${esc(m.name)}"
+        loading="lazy"
+        onerror="this.onerror=null;this.src='https://placehold.co/400x300/f47719/ffffff?text=Feira+Livre'"
+      >
+
+      <div class="tile-caption">
+        ${esc(m.name)}
+        <small>★ ${esc(m.rating)} · ${esc(m.city)}</small>
+      </div>
+    </article>
+  `).join('');
+
+  $('#homeMarkets').querySelectorAll('[data-market]').forEach(card => {
+    card.addEventListener('click', () => openMarket(card.dataset.market));
+  });
+
+  const recent = state.reports.slice(0, 3);
+
+  $('#homeReports').innerHTML = recent.length
+    ? recent.map(r => `
+        <article class="report-item" style="margin-bottom:10px">
+          <span class="badge">${esc(r.status)}</span>
+          <h3>${esc(r.type)}</h3>
+          <p>${esc(r.market)}</p>
+        </article>
+      `).join('')
+    : `
+      <div class="notice">
+        🧹 Ajude a manter as feiras limpas. Registre problemas de limpeza.
+      </div>
+    `;
+}
+
+/* PERFIL */
+
+function renderProfile() {
+  $('#profileName').textContent = state.user?.name || 'Visitante';
+  $('#profileEmail').textContent = state.user?.email || 'Sem e-mail cadastrado';
+
+  $('#savedCount').textContent = state.saved.length;
+
+  const reports = state.reports.filter(
+    r => !state.user || !r.userEmail || r.userEmail === state.user.email
+  );
+
+  $('#reportCount').textContent = reports.length;
+  $('#pointsCount').textContent = reports.length * 10;
+}
+
+$('#editProfile').addEventListener('click', () => go('edit'));
+
+$('#editForm').addEventListener('submit', event => {
+  event.preventDefault();
+
+  if (!state.user) {
+    toast('Entre na sua conta primeiro.');
+    return;
+  }
+
+  const name = $('#editName').value.trim();
+  const email = $('#editEmail').value.trim().toLowerCase();
+
+  if (state.users.some(
+    u => u.email === email && u.email !== state.user.email
+  )) {
+    toast('Este e-mail já está cadastrado.');
+    return;
+  }
+
+  const oldEmail = state.user.email;
+
+  state.users = state.users.map(u =>
+    u.email === oldEmail
+      ? { ...u, name, email }
+      : u
+  );
+
+  state.reports.forEach(r => {
+    if (r.userEmail === oldEmail) r.userEmail = email;
+  });
+
+  state.user = state.users.find(u => u.email === email);
+
+  persist();
+  go('profile');
+  toast('Perfil atualizado!');
+});
+
+/* SAIR DA CONTA */
+
+$('#logoutBtn').addEventListener('click', () => {
+  if (confirm('Deseja sair da sua conta?')) {
+    state.user = null;
+    persist();
+    go('login');
+    toast('Você saiu da conta.');
+  }
+});
+
+/* CONFIGURAÇÕES */
+
+$('#compactToggle').addEventListener('click', () => {
+  state.compact = !state.compact;
+
+  document.querySelectorAll('.content-section').forEach(section => {
+    section.style.paddingTop = state.compact ? '10px' : '';
+  });
+
+  persist();
+  toast('Configuração atualizada.');
+});
+
+$('#clearData').addEventListener('click', () => {
+  if (confirm('Apagar contas, favoritos e denúncias deste navegador?')) {
+    localStorage.removeItem(KEY);
+    state = clone(defaults);
+    renderAll();
+    go('login');
+    toast('Dados locais apagados.');
+  }
+});
+
+/* ATUALIZAR TODAS AS TELAS */
+
+function renderAll() {
+  renderHome();
+  renderMarkets();
+  renderSaved();
+  renderReports();
+  renderProfile();
+}
+
+renderAll();
+
+if (state.user) {
+  go('home');
+} else {
+  go('login');
+}
+</script>
+
+</body>
+</html>
