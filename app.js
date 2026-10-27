@@ -1,1 +1,245 @@
-// =========================================== // FEIRA LIMPA - MODO DE APRESENTAÇÃO ESCOLAR // Não utiliza servidor nem Supabase. // Os dados ficam salvos neste navegador. // Código de confirmação demonstrativo: 123456 // =========================================== async function api(url, opt = {}) { const method = (opt.method || "GET").toUpperCase(); let body = {}; try { body = opt.body ? JSON.parse(opt.body) : {}; } catch { body = {}; } const read = key => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }; const save = (key, value) => { localStorage.setItem(key, JSON.stringify(value)); }; const users = () => read("fl_demo_users"); const current = () => { try { return JSON.parse(localStorage.getItem("fl_demo_session")); } catch { return null; } }; const setCurrent = user => { localStorage.setItem("fl_demo_session", JSON.stringify(user)); }; const getUser = () => { const session = current(); return session ? users().find(u => u.id === session.id) : null; }; const reports = () => read("fl_demo_reports"); const notices = () => read("fl_demo_notices"); const demoMarkets = [ { id: "caruaru", name: "Feira de Caruaru", city: "Caruaru, PE", days: "Consulte os dias de funcionamento", hours: "Manhã", description: "Feira tradicional com diversos produtos.", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80" }, { id: "sulanca", name: "Feira da Sulanca", city: "Santa Cruz do Capibaribe, PE", days: "Consulte o calendário local", hours: "Manhã", description: "Comércio de confecções e produtos variados.", image: "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?auto=format&fit=crop&w=900&q=80" }, { id: "hortifruti", name: "Feira de frutas e verduras", city: "Recife, PE", days: "Consulte a feira local", hours: "Manhã", description: "Produtos frescos e comércio local.", image: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80" } ]; // Informações básicas da conta if (url === "/api/me") { const user = getUser(); return { user, settings: { emailNotifications: true, compactMode: false } }; } // Lista de feiras if (url === "/api/markets") { return { markets: demoMarkets }; } // Cadastro demonstrativo if (url === "/api/register" && method === "POST") { const name = String(body.name || "").trim(); const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || ""); if (name.length < 2 || !email || password.length < 8) { throw Error( "Informe nome, e-mail válido e senha com pelo menos 8 caracteres." ); } const list = users(); if (list.some(u => u.email === email)) { throw Error("Este e-mail já está cadastrado."); } const user = { id: Date.now().toString(), name, email, password, role: "cidadao" }; list.push(user); save("fl_demo_users", list); return { email, purpose: "register", message: "Cadastro demonstrativo realizado. Use o código 123456." }; } // Login demonstrativo if (url === "/api/login" && method === "POST") { const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || ""); const user = users().find( u => u.email === email && u.password === password ); if (!user) { throw Error("E-mail ou senha incorretos."); } return { email: user.email, purpose: "login", message: "Modo de apresentação: use o código 123456." }; } // Confirmação demonstrativa if (url === "/api/verify" && method === "POST") { if (String(body.code || "") !== "123456") { throw Error("Código incorreto. Para a demonstração, use 123456."); } const user = users().find( u => u.email === String(body.email || "").toLowerCase() ); if (!user) { throw Error("Conta não encontrada. Faça o cadastro primeiro."); } const session = { id: user.id, name: user.name, email: user.email, role: user.role || "cidadao" }; setCurrent(session); return { ok: true, user: session }; } if (url === "/api/resend" && method === "POST") { return { message: "Código demonstrativo: 123456. Não foi enviado e-mail." }; } // Encerrar sessão if (url === "/api/logout" && method === "POST") { localStorage.removeItem("fl_demo_session"); return { ok: true }; } // Denúncias if (url === "/api/reports" && method === "GET") { const user = getUser(); if (!user) throw Error("Entre na conta novamente."); const list = reports(); return { reports: user.role === "prefeitura" ? list : list.filter(r => r.user_id === user.id) }; } if (url === "/api/reports" && method === "POST") { const user = getUser(); if (!user) throw Error("Faça login para registrar uma denúncia."); if (user.role === "prefeitura") { throw Error("Use uma conta de cidadão para registrar denúncias."); } if ( !String(body.market || "").trim() || !String(body.category || "").trim() || String(body.description || "").trim().length < 10 ) { throw Error("Preencha os campos. A descrição deve ter pelo menos 10 caracteres."); } const list = reports(); const report = { id: Date.now(), user_id: user.id, market: String(body.market).trim(), category: String(body.category).trim(), description: String(body.description).trim(), location: String(body.location || "").trim(), status: "Recebida", created_at: new Date().toLocaleString("pt-BR"), reporter: user.name }; list.unshift(report); save("fl_demo_reports", list); const ns = notices(); ns.unshift({ id: Date.now(), user_id: user.id, title: "Denúncia registrada", message: "Sua denúncia foi registrada nesta demonstração.", created_at: new Date().toLocaleString("pt-BR"), read: 0 }); save("fl_demo_notices", ns); return { ok: true, id: report.id }; } // Atualizar status de uma denúncia if (url.startsWith("/api/reports/") && method === "PATCH") { const user = getUser(); if (!user || user.role !== "prefeitura") { throw Error("Esta ação é apenas demonstrativa para a prefeitura."); } const id = Number(url.split("/").pop()); const list = reports(); const report = list.find(r => r.id === id); if (!report) throw Error("Denúncia não encontrada."); report.status = body.status; save("fl_demo_reports", list); return { ok: true }; } // Avisos if (url === "/api/notices" && method === "GET") { const user = getUser(); return { notices: user ? notices().filter(n => n.user_id === user.id) : [] }; } if (url === "/api/notices/read-all" && method === "POST") { const user = getUser(); const list = notices(); list.forEach(n => { if (user && n.user_id === user.id) n.read = 1; }); save("fl_demo_notices", list); return { ok: true }; } // Preferências demonstrativas if (url === "/api/settings" && method === "PUT") { save("fl_demo_settings", body); return { ok: true }; } // Perfil if (url === "/api/profile" && method === "PUT") { const session = current(); if (!session) throw Error("Entre na conta novamente."); const list = users(); const user = list.find(u => u.id === session.id); if (!user) throw Error("Conta não encontrada."); user.name = String(body.name || user.name).trim(); const email = String(body.email || user.email).trim().toLowerCase(); if (list.some(u => u.id !== user.id && u.email === email)) { throw Error("Este e-mail já está cadastrado."); } user.email = email; save("fl_demo_users", list); const updated = { id: user.id, name: user.name, email: user.email, role: user.role || "cidadao" }; setCurrent(updated); return { user: updated }; } if (url.startsWith("/api/profile/")) { throw Error( "Esta função de segurança não está disponível no modo de apresentação." ); } if (url === "/api/forgot" && method === "POST") { throw Error( "Recuperação de senha por e-mail não está disponível nesta demonstração." ); } if (url === "/api/reset" && method === "POST") { throw Error( "Redefinição por e-mail não está disponível nesta demonstração." ); } throw Error("Função ainda não adaptada para o modo de apresentação."); } 
+async function api(url, opt = {}) {
+    const method = (opt.method || 'GET').toUpperCase();
+    const body = opt.body ? JSON.parse(opt.body) : {};
+    const key = 'feira_limpa_demo';
+    const sessionKey = 'feira_limpa_sessao';
+
+    let db = JSON.parse(localStorage.getItem(key) || '{"users":[],"reports":[],"notices":[]}');
+
+    function save() {
+        localStorage.setItem(key, JSON.stringify(db));
+    }
+
+    function fail(message) {
+        throw new Error(message);
+    }
+
+    function currentUser() {
+        const email = localStorage.getItem(sessionKey);
+        return db.users.find(u => u.email === email);
+    }
+
+    function publicUser(u) {
+        return {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role || 'cidadao'
+        };
+    }
+
+    function loggedUser() {
+        const u = currentUser();
+        if (!u) fail('Faça login para continuar.');
+        return u;
+    }
+
+    const demoMarkets = [
+        {
+            id: '1',
+            name: 'Feira de Caruaru',
+            city: 'Caruaru',
+            days: 'Segunda a sábado',
+            hours: '5h às 17h',
+            image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80',
+            description: 'Uma das feiras mais conhecidas de Pernambuco.'
+        },
+        {
+            id: '2',
+            name: 'Feira de Santa Cruz',
+            city: 'Santa Cruz do Capibaribe',
+            days: 'Segunda a sábado',
+            hours: '6h às 18h',
+            image: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80',
+            description: 'Espaço de comércio e convivência da comunidade.'
+        },
+        {
+            id: '3',
+            name: 'Feira do Recife',
+            city: 'Recife',
+            days: 'Segunda a sábado',
+            hours: '6h às 16h',
+            image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80',
+            description: 'Feira livre para comércio de produtos variados.'
+        }
+    ];
+
+    if (url === '/api/register' && method === 'POST') {
+        const name = String(body.name || '').trim();
+        const email = String(body.email || '').trim().toLowerCase();
+        const password = String(body.password || '');
+
+        if (name.length < 2) fail('Digite seu nome completo.');
+        if (!email.includes('@')) fail('Digite um e-mail válido.');
+        if (password.length < 8) fail('A senha precisa ter pelo menos 8 caracteres.');
+        if (db.users.some(u => u.email === email)) {
+            fail('Este e-mail já está cadastrado. Faça login.');
+        }
+
+        db.users.push({
+            id: Date.now(),
+            name,
+            email,
+            password,
+            role: 'cidadao',
+            settings: {
+                emailNotifications: false,
+                compactMode: false
+            }
+        });
+
+        save();
+        return {
+            email,
+            message: 'Cadastro criado! Para esta demonstração, use o código 123456.'
+        };
+    }
+
+    if (url === '/api/login' && method === 'POST') {
+        const email = String(body.email || '').trim().toLowerCase();
+        const password = String(body.password || '');
+        const u = db.users.find(u => u.email === email && u.password === password);
+
+        if (!u) fail('E-mail ou senha incorretos. Crie uma conta primeiro.');
+        return {
+            email: u.email,
+            message: 'Para esta demonstração, use o código 123456.'
+        };
+    }
+
+    if (url === '/api/verify' && method === 'POST') {
+        if (String(body.code || '') !== '123456') {
+            fail('Código incorreto. Use 123456.');
+        }
+
+        const email = String(body.email || '').trim().toLowerCase();
+        const u = db.users.find(u => u.email === email);
+
+        if (!u) fail('Conta não encontrada. Crie sua conta novamente.');
+
+        localStorage.setItem(sessionKey, u.email);
+        return { user: publicUser(u) };
+    }
+
+    if (url === '/api/resend' && method === 'POST') {
+        return { message: 'Código de demonstração: 123456.' };
+    }
+
+    if (url === '/api/logout') {
+        localStorage.removeItem(sessionKey);
+        return { message: 'Você saiu da conta.' };
+    }
+
+    if (url === '/api/me') {
+        const u = currentUser();
+        return {
+            user: u ? publicUser(u) : null,
+            settings: u?.settings || {}
+        };
+    }
+
+    if (url === '/api/markets') {
+        return { markets: demoMarkets };
+    }
+
+    if (url === '/api/reports' && method === 'GET') {
+        const u = loggedUser();
+        const reports = db.reports.filter(r =>
+            u.role === 'prefeitura' || r.email === u.email
+        );
+        return { reports };
+    }
+
+    if (url === '/api/reports' && method === 'POST') {
+        const u = loggedUser();
+        const report = {
+            id: Date.now(),
+            email: u.email,
+            reporter: u.name,
+            market: body.market || '',
+            category: body.category || '',
+            description: body.description || '',
+            location: body.location || '',
+            status: 'Recebida',
+            created_at: new Date().toLocaleString('pt-BR')
+        };
+
+        db.reports.unshift(report);
+        save();
+        return { report };
+    }
+
+    if (url.startsWith('/api/reports/') && method === 'PATCH') {
+        loggedUser();
+        const id = Number(url.split('/').pop());
+        const report = db.reports.find(r => r.id === id);
+
+        if (!report) fail('Denúncia não encontrada.');
+
+        report.status = body.status || report.status;
+        save();
+        return { report };
+    }
+
+    if (url === '/api/notices' && method === 'GET') {
+        loggedUser();
+        return { notices: db.notices };
+    }
+
+    if (url === '/api/notices/read-all' && method === 'POST') {
+        loggedUser();
+        db.notices.forEach(n => n.read = true);
+        save();
+        return { message: 'Avisos marcados como lidos.' };
+    }
+
+    if (url === '/api/profile' && method === 'PUT') {
+        const u = loggedUser();
+        const name = String(body.name || '').trim();
+        const email = String(body.email || '').trim().toLowerCase();
+
+        if (name.length < 2) fail('Digite seu nome.');
+        if (!email.includes('@')) fail('Digite um e-mail válido.');
+
+        if (db.users.some(other => other.email === email && other.id !== u.id)) {
+            fail('Este e-mail já está sendo usado.');
+        }
+
+        u.name = name;
+        u.email = email;
+        localStorage.setItem(sessionKey, email);
+        save();
+
+        return { user: publicUser(u) };
+    }
+
+    if (url === '/api/settings' && method === 'PUT') {
+        const u = loggedUser();
+        u.settings = body;
+        save();
+        return { message: 'Configurações salvas.' };
+    }
+
+    if (url === '/api/forgot' && method === 'POST') {
+        return { message: 'Para esta demonstração, use o código 123456.' };
+    }
+
+    if (url === '/api/reset' && method === 'POST') {
+        const email = String(body.email || '').trim().toLowerCase();
+        const u = db.users.find(u => u.email === email);
+
+        if (!u) fail('Conta não encontrada.');
+        if (String(body.code || '') !== '123456') fail('Código incorreto.');
+        if (String(body.password || '').length < 8) fail('A senha precisa ter 8 caracteres.');
+
+        u.password = body.password;
+        save();
+        return { message: 'Senha alterada com sucesso.' };
+    }
+
+    if (url.startsWith('/api/profile/')) {
+        fail('Esta função de perfil não está disponível na demonstração.');
+    }
+
+    fail('Função não reconhecida: ' + url);
+}
